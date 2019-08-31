@@ -4,248 +4,138 @@
 LiquidCrystal lcd(12, 11, 7, 6, 5, 4);
 
 volatile int player = 1;
-char timeline[16];
-int mins1 = 1;
-int sec1 = 0;
-int mins2 = 1;
-int sec2 = 0;
-int buttonmode1 = 0;
-int buttonmode2 = 8;
-const int butpin1 = 2;
-const int butpin2 = 3;
-int coup1 = 0;
-int coup2 = 0;
-int stepp = 0;
+int sec1;
+int sec2;
+
 int etape = 0;
-int potPin = A1;
-int tempsVal;
-int temps;
-
-
+const int butPin = 2;
 void setup() {
-  pinMode(potPin, INPUT);
-  pinMode(butpin1, INPUT_PULLUP);
-  pinMode(butpin2, INPUT_PULLUP);
   lcd.begin(16, 2);
   Serial.begin(9600);
-  attachInterrupt(digitalPinToInterrupt(butpin1), turn , RISING);
-
-}
-void turn() {
-
-  delay(1);
-
-  if (etape <= 1) {
-    etape++;
-  }
-  else {
-    if (player % 2 == 1) {
-      coup1++;
-    }
-    else {
-      coup2++;
-    }
-
-    player++;
-
-    player = player % 2 ;
-
-    if (etape <= 1) {
-      etape++;
-      lcd.clear();
-    }
-  }
 }
 
-void loop() {
+void loop() { // Programme principal
 
-  while (etape == 0) {
-    tempsVal = analogRead(potPin);
-    Serial.println(tempsVal);
-    temps = tempsVal / 51;
-    lcd.setCursor(0, 0);
-    lcd.print("Temps de jeu");
-    lcd.setCursor(0, 1);
-    sprintf(timeline, "%0.1d mins chaque", temps);
-    lcd.print(timeline);
-    mins1 = mins2 = temps;
-    delay(250);
+  int tempsdejeu1 = 0;
+  int tempsdejeu2 = 0;
+  int dt1;
+  int dt2;
+  Serial.print(9);
+  Serial.println("etape :");
+  Serial.print(etape);
+
+
+  while (etape == 0) { //choiz du Temps
+    Serial.println("etape 0" );
+    choixTemps(tempsdejeu1);
+
+    tempsdejeu2 = tempsdejeu1;
+    if (digitalRead(butPin) == HIGH) {
+      etape = 1;
+    }
 
   }
+  while (etape == 1) {
+    Serial.println("etape 1");
+
+    LeJeu(tempsdejeu1, tempsdejeu2, etape);
+
+  }
+  while (etape == 4) {
+    etape = Findutemps(dt1, dt2);
+    if (etape == 2 && digitalRead(butPin) == HIGH) {
+      Serial.print("encore");
+      return (0);
+    }
+  }
+}
+
+void choixTemps(int &tempsdejeu) { //Choix du temps de jeu
+  int potPin = A1;
+  pinMode(potPin, INPUT);
+  char timeline[16];
+  tempsdejeu = analogRead(potPin) / 51; //Lecture du voltage 0-1023(0-5V) donc max 20 minutes de jeu
+  lcd.setCursor(0, 0);
+  lcd.print("Temps de jeu");
+  lcd.setCursor(0, 1);
+  sprintf(timeline, "%0.1d mins chaque", tempsdejeu);
+  lcd.print(timeline);
+
+}
 
 
-  buttonmode1 = digitalRead(butpin1);
-  buttonmode2 = digitalRead(butpin2);
 
-  stepp = 1;
-  Serial.print(stepp);
+int turn(int player) { //Change au prochain joueur
+  player++;
+  player = player % 2;
+  return (player);
+}
 
+void LeJeu(int &min1, int &min2, int &etape) {
+  char timeline1[16];
+  char timeline2[16];
+  int dt1 = 0;
+  int dt2 = 0;
+  pinMode(butPin, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(butPin), turn , RISING); // met l'interruption lorsque butPin1 passe de LOW a HIGH
+  if ((min1 == 0 && sec1 == 0) || (min2 == 0 && sec2 == 0)) {
+    Serial.print("condition fin jeu");
+    etape = 2;
+  }
 
-
-
-
-
-  // Loop Temps***********************************************************
 
   switch (player) {
-      stepp = 2;
-      Serial.print(stepp);
-
-    case 1:
-
-      Serial.print(" player1 ");
-
-
-      stepp = 3;
-      Serial.print(stepp);
-
-      if (sec1 == 0) {
-        stepp = 5;
-        Serial.print(stepp);
-        if (mins1 != 0) {
-          stepp = 6;
-          Serial.print(stepp);
-          mins1--;
-          sec1 = 60;
-          Serial.print("Fin1");
-        }
-      }
-
-      if (mins1 == 0 && sec1 == 0) {
-
-        lcd.clear();
-        Serial.print("Fin2");
-        etape = 3;
-        lcd.print("Fin");         // Fin
+    case 1 : // Player 1
+      dt1++;
+      if (sec1 != 0 ) { // changer de minute
+        sec1--;
+        Serial.print(sec1);
+        Serial.print(" IF 1 ");
         break;
-
       }
       else {
-
-
-
-        stepp = 4;
-        Serial.print(stepp);
-        sec1--;
-        delay(1000);
-        lcd.setCursor(0, 0); //player 1
-        sprintf(timeline, "%0.2d : %0.2d ", mins1, sec1);
-        lcd.print(timeline);
-        lcd.print(" ");
-        lcd.print(coup1);
-        lcd.print(" ");
-        lcd.print("Coups");
-        lcd.setCursor(0, 1); //player 2
-        sprintf(timeline, "%0.2d : %0.2d ", mins2, sec2);
-        lcd.print(timeline);
-        lcd.print(" ");
-        lcd.print(coup2);
-        lcd.print(" ");
-        lcd.print("Coups");
+        Serial.print("IF 2");
+        min1--;
+        Serial.print("IF 3");
+        sec1 = 59;
+        Serial.print("IF 4");
         break;
 
-
       }
-
-      if ( sec1 != 0) {
-        break;
-      }
-
       break;
-
-
-
-
-    case 0 :
-
-      Serial.print(" player2 ");
-      Serial.print(player);
-
-      if (sec2 == 0) {
-        stepp = 5;
-        Serial.print(stepp);
-        if (mins2 != 0) {
-          stepp = 6;
-          Serial.print(stepp);
-          mins2--;
-          sec2 = 60;
-          Serial.print("Fin1");
-        }
-      }
-
-
-
-      if (mins2 == 0 && sec2 == 0) {
-
-        lcd.clear();
-        Serial.print("Fin4");
-        etape = 4;
+    case 0: // Player 2
+      dt2++;
+      if (sec2 == 0) { // changer de minute
+        min2--;
+        sec2 = 59;
         break;
-
       }
       else {
         sec2--;
-        delay(1000);
-        lcd.setCursor(0, 0); //player 1
-        sprintf(timeline, "%0.2d : %0.2d ", mins1, sec1);
-        lcd.print(timeline);
-        lcd.print(" ");
-        lcd.print(coup1);
-        lcd.print(" ");
-        lcd.print("Coups");
-        lcd.setCursor(0, 1); //player 2
-        sprintf(timeline, "%0.2d : %0.2d ", mins2, sec2);
-        lcd.print(timeline);
-        lcd.print(" ");
-        lcd.print(coup2);
-        lcd.print(" ");
-        lcd.print("Coups");
-
-
-
-      }
-
-      if ( sec2 != 0) {
         break;
       }
-
-
-
-
-
   }
+  lcd.clear();
+  sprintf(timeline1, "%0.2d:%0.2d", min1, sec1);
+  sprintf(timeline2, "%0.2d:%0.2d", min2, sec2);
+  lcd.setCursor(0, 0); //affichage player 1
+  lcd.print(timeline1);
+  lcd.setCursor(0, 1); // affichage / player 2
+  lcd.print(timeline2);
+  delay(1000);
+  Serial.print("FINJEU");
 
-  //   Fin du temps d'un des joueurs**********************************
-
-  while (etape == 3) {
-    lcd.setCursor(0, 0);
-    lcd.print("Fin du temps");
-    lcd.setCursor(0, 1); //player 2
-    sprintf(timeline, "%0.2d : %0.2d ", mins2, sec2);
-    lcd.print(timeline);
-  }
-
-  while (etape == 4) {
-    lcd.setCursor(0, 1);
-    lcd.print("Fin du temps");
-    lcd.setCursor(0, 0); //player 1
-    sprintf(timeline, "%0.2d : %0.2d ", mins1, sec1);
-    lcd.print(timeline);
-  }
+}
 
 
-
-
-
-  Serial.print(' ');
-  Serial.print(stepp);
-  Serial.print(' ');
-  Serial.print(sec1);
-  Serial.print(' ');
-  Serial.print(player);
-  Serial.print('\n');
-
-
-
+int Findutemps(int dt1, int dt2) { // Temps termine
+  char stats[16];
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Fin du temps");
+  lcd.setCursor(0, 1);
+  sprintf(stats, "Blancs %0.2d secs Noirs %0.2d secs", dt1, dt2);
+  lcd.print(stats);
+  Serial.print("Voyons");
 
 }
