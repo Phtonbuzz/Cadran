@@ -3,11 +3,7 @@
 //Initialise the LCD with the arduino. LiquidCrystal(rs, enable, d4, d5, d6, d7)
 LiquidCrystal lcd(12, 11, 7, 6, 5, 4);
 
-volatile int player = 1;
-int sec1;
-int sec2;
-
-int etape = 0;
+volatile int player = 0;
 const int butPin = 2;
 void setup() {
   lcd.begin(16, 2);
@@ -15,22 +11,24 @@ void setup() {
 }
 
 void loop() { // Programme principal
-
+  int sec1 = 5;
+  int sec2 = 5;
   int tempsdejeu1 = 0;
   int tempsdejeu2 = 0;
   int dt1;
   int dt2;
-  Serial.print(9);
-  Serial.println("etape :");
-  Serial.print(etape);
+  int etape=0;
+  Serial.println("Loop ");
 
 
-  while (etape == 0) { //choiz du Temps
+  while (etape == 0) { //choix du Temps
     Serial.println("etape 0" );
     choixTemps(tempsdejeu1);
 
     tempsdejeu2 = tempsdejeu1;
+    delay(250); // deboucing
     if (digitalRead(butPin) == HIGH) {
+      Serial.print("0 a 1 ");
       etape = 1;
     }
 
@@ -38,14 +36,15 @@ void loop() { // Programme principal
   while (etape == 1) {
     Serial.println("etape 1");
 
-    LeJeu(tempsdejeu1, tempsdejeu2, etape);
+    LeJeu(tempsdejeu1, tempsdejeu2,sec1,sec2, etape);
 
   }
-  while (etape == 4) {
-    etape = Findutemps(dt1, dt2);
-    if (etape == 2 && digitalRead(butPin) == HIGH) {
-      Serial.print("encore");
-      return (0);
+  while (etape == 2) { //Affichage fin de jeu
+    Findutemps(dt1, dt2);
+    if (digitalRead(butPin) == HIGH) {
+      Serial.println("restart");
+      lcd.clear();
+      etape = 0;
     }
   }
 }
@@ -65,35 +64,31 @@ void choixTemps(int &tempsdejeu) { //Choix du temps de jeu
 
 
 
-int turn(int player) { //Change au prochain joueur
+void turn() { //Change au prochain joueur
+  delay(250);// debouncing
+  Serial.print("turn ");
   player++;
   player = player % 2;
-  return (player);
+  Serial.print(player);
 }
 
-void LeJeu(int &min1, int &min2, int &etape) {
+void LeJeu(int &min1, int &min2, int &sec1, int &sec2, int &etape) {
   char timeline1[16];
   char timeline2[16];
   int dt1 = 0;
   int dt2 = 0;
   pinMode(butPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(butPin), turn , RISING); // met l'interruption lorsque butPin1 passe de LOW a HIGH
-  if ((min1 == 0 && sec1 == 0) || (min2 == 0 && sec2 == 0)) {
-    Serial.print("condition fin jeu");
-    etape = 2;
-  }
-
-
-  switch (player) {
+  switch (player) { //tours
     case 1 : // Player 1
       dt1++;
-      if (sec1 != 0 ) { // changer de minute
+      if (sec1 != 0 ) {
         sec1--;
         Serial.print(sec1);
-        Serial.print(" IF 1 ");
+        Serial.print("-");
         break;
       }
-      else {
+      else { // changer de minute
         Serial.print("IF 2");
         min1--;
         Serial.print("IF 3");
@@ -118,24 +113,26 @@ void LeJeu(int &min1, int &min2, int &etape) {
   lcd.clear();
   sprintf(timeline1, "%0.2d:%0.2d", min1, sec1);
   sprintf(timeline2, "%0.2d:%0.2d", min2, sec2);
-  lcd.setCursor(0, 0); //affichage player 1
+  lcd.setCursor(5, 0); //affichage player 1
   lcd.print(timeline1);
-  lcd.setCursor(0, 1); // affichage / player 2
+  lcd.setCursor(5, 1); // affichage / player 2
   lcd.print(timeline2);
   delay(1000);
-  Serial.print("FINJEU");
-
+  Serial.print("FINJEU ");
+  if ((min1 == 0 && sec1 == 0) || (min2 == 0 && sec2 == 0)) { // condition fin de jeu
+    Serial.print("condition fin jeu ");
+    lcd.clear();
+    etape = 2;
+  }
 }
 
 
-int Findutemps(int dt1, int dt2) { // Temps termine
+void Findutemps(int dt1, int dt2) { // Temps termine
   char stats[16];
-  lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Fin du temps");
   lcd.setCursor(0, 1);
-  sprintf(stats, "Blancs %0.2d secs Noirs %0.2d secs", dt1, dt2);
+  sprintf(stats, "P1 %0.2d s P2 %0.2d s", dt1, dt2);
   lcd.print(stats);
-  Serial.print("Voyons");
-
+  Serial.println("Voyons ");
 }
